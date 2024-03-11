@@ -5,12 +5,14 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 )
 
 func main() {
 	//define options as flags
 	sizeInBytes := flag.Bool("c", false, "Find file size in bytes")
 	lineCount := flag.Bool("l", false, "Find line count")
+	wordCount := flag.Bool("w", false, "Find word count")
 
 	//parse the flags
 	flag.Parse()
@@ -36,6 +38,21 @@ func main() {
 		lineCount := getLineCount(file)
 		fmt.Println("Line count: ", lineCount)
 	}
+	if *wordCount {
+		wordCount := getWordCount(file)
+		fmt.Println("Word count: ", wordCount)
+	}
+}
+func getWordCount(file *os.File) int64 {
+	scanner := bufio.NewScanner(file)
+	var wordCount int64 = 0
+	for scanner.Scan() {
+		line := scanner.Text()
+		words := strings.Fields(line)
+		wordCount += int64(len(words))
+	}
+	file.Seek(0, 0)
+	return wordCount
 }
 func getLineCount(file *os.File) int64 {
 	scanner := bufio.NewScanner(file)
@@ -43,6 +60,7 @@ func getLineCount(file *os.File) int64 {
 	for scanner.Scan() {
 		lineCount++
 	}
+	file.Seek(0, 0)
 	return lineCount
 }
 func getFileSizeInBytes(file *os.File) int64 {
