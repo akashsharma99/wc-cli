@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
 	"os"
@@ -9,6 +10,7 @@ import (
 func main() {
 	//define options as flags
 	sizeInBytes := flag.Bool("c", false, "Find file size in bytes")
+	lineCount := flag.Bool("l", false, "Find line count")
 
 	//parse the flags
 	flag.Parse()
@@ -30,8 +32,19 @@ func main() {
 		fileSize := getFileSizeInBytes(file)
 		fmt.Println("File size in bytes: ", fileSize)
 	}
+	if *lineCount {
+		lineCount := getLineCount(file)
+		fmt.Println("Line count: ", lineCount)
+	}
 }
-
+func getLineCount(file *os.File) int64 {
+	scanner := bufio.NewScanner(file)
+	var lineCount int64 = 0
+	for scanner.Scan() {
+		lineCount++
+	}
+	return lineCount
+}
 func getFileSizeInBytes(file *os.File) int64 {
 
 	fileInfo, err := file.Stat()
