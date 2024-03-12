@@ -1,13 +1,11 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"flag"
 	"fmt"
 	"io"
 	"os"
-	"strings"
 )
 
 func main() {
@@ -25,6 +23,7 @@ func main() {
 	}
 	// filename from non flag arguments
 	fileName := flag.Arg(0)
+	var file *os.File = nil
 	var data []byte
 	var err error
 	if fileName == "" {
@@ -38,22 +37,14 @@ func main() {
 			fmt.Println("Error: ", err)
 			os.Exit(1)
 		}
-		// create a new txt file to write the data to
-		file, err := os.Create("temp.txt")
-		if err != nil {
-			fmt.Println("Error: ", err)
-			os.Exit(1)
-		}
-		// write the data to the file
-		_, err = file.Write(data)
-		if err != nil {
-			fmt.Println("Error: ", err)
-			os.Exit(1)
-		}
-		// close the file
-		file.Close()
+		file = os.Stdin
 	} else {
 		data, err = os.ReadFile(fileName)
+		if err != nil {
+			fmt.Println("Error: ", err)
+			os.Exit(1)
+		}
+		file, err = os.Open(fileName)
 		if err != nil {
 			fmt.Println("Error: ", err)
 			os.Exit(1)
@@ -62,7 +53,7 @@ func main() {
 
 	// if -c flag is set, get file size in bytes
 	if *sizeInBytes {
-		fmt.Println("File size in bytes: ", len(data))
+		fmt.Println("File size in bytes: ", getFileSizeInBytes(file, data))
 	}
 	if *lineCount {
 
@@ -73,35 +64,12 @@ func main() {
 		fmt.Println("Word count: ", len(bytes.Fields(data)))
 	}
 }
-func getWordCount(file *os.File) int64 {
-	scanner := bufio.NewScanner(file)
-	var wordCount int64 = 0
-	for scanner.Scan() {
-		line := scanner.Text()
-		words := strings.Fields(line)
-		wordCount += int64(len(words))
-	}
-	file.Seek(0, 0)
-	return wordCount
-}
-func getLineCount(file *os.File) int64 {
-	scanner := bufio.NewScanner(file)
-	var lineCount int64 = 0
-	for scanner.Scan() {
-		lineCount++
-	}
-	file.Seek(0, 0)
-	return lineCount
-}
-func getFileSizeInBytes(file *os.File) int64 {
+
+func getFileSizeInBytes(file *os.File, data []byte) int64 {
 	if file == os.Stdin {
-		bytes, err := io.ReadAll(file)
-		if err != nil {
-			fmt.Println("Error: ", err)
-			os.Exit(1)
-		}
-		return int64(len(bytes))
+		return int64(len(data))
 	} else {
+		file.Seek(0, 0)
 		fileInfo, err := file.Stat()
 		if err != nil {
 			fmt.Println("Error: ", err)
