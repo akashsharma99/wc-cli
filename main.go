@@ -2,8 +2,10 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 )
@@ -13,34 +15,62 @@ func main() {
 	sizeInBytes := flag.Bool("c", false, "Find file size in bytes")
 	lineCount := flag.Bool("l", false, "Find line count")
 	wordCount := flag.Bool("w", false, "Find word count")
-
 	//parse the flags
 	flag.Parse()
+	//if no flags set then do all operations
+	if !*sizeInBytes && !*lineCount && !*wordCount {
+		*sizeInBytes = true
+		*lineCount = true
+		*wordCount = true
+	}
 	// filename from non flag arguments
 	fileName := flag.Arg(0)
+	var data []byte
+	var err error
 	if fileName == "" {
-		fmt.Println("Please provide a file name")
-		os.Exit(1)
+		stat, _ := os.Stdin.Stat()
+		if (stat.Mode() & os.ModeCharDevice) != 0 {
+			fmt.Println("No file provided")
+			os.Exit(1)
+		}
+		data, err = io.ReadAll(os.Stdin)
+		if err != nil {
+			fmt.Println("Error: ", err)
+			os.Exit(1)
+		}
+		// create a new txt file to write the data to
+		file, err := os.Create("temp.txt")
+		if err != nil {
+			fmt.Println("Error: ", err)
+			os.Exit(1)
+		}
+		// write the data to the file
+		_, err = file.Write(data)
+		if err != nil {
+			fmt.Println("Error: ", err)
+			os.Exit(1)
+		}
+		// close the file
+		file.Close()
+	} else {
+		data, err = os.ReadFile(fileName)
+		if err != nil {
+			fmt.Println("Error: ", err)
+			os.Exit(1)
+		}
 	}
-	fmt.Println("File name: ", fileName)
-	file, err := os.Open(fileName)
-	if err != nil {
-		fmt.Println("Error: ", err)
-		os.Exit(1)
-	}
-	defer file.Close()
+
 	// if -c flag is set, get file size in bytes
 	if *sizeInBytes {
-		fileSize := getFileSizeInBytes(file)
-		fmt.Println("File size in bytes: ", fileSize)
+		fmt.Println("File size in bytes: ", len(data))
 	}
 	if *lineCount {
-		lineCount := getLineCount(file)
-		fmt.Println("Line count: ", lineCount)
+
+		fmt.Println("Line count: ", bytes.Count(data, []byte{'\n'}))
 	}
 	if *wordCount {
-		wordCount := getWordCount(file)
-		fmt.Println("Word count: ", wordCount)
+
+		fmt.Println("Word count: ", len(bytes.Fields(data)))
 	}
 }
 func getWordCount(file *os.File) int64 {
@@ -64,11 +94,19 @@ func getLineCount(file *os.File) int64 {
 	return lineCount
 }
 func getFileSizeInBytes(file *os.File) int64 {
-
-	fileInfo, err := file.Stat()
-	if err != nil {
-		fmt.Println("Error: ", err)
-		panic(err)
+	if file == os.Stdin {
+		bytes, err := io.ReadAll(file)
+		if err != nil {
+			fmt.Println("Error: ", err)
+			os.Exit(1)
+		}
+		return int64(len(bytes))
+	} else {
+		fileInfo, err := file.Stat()
+		if err != nil {
+			fmt.Println("Error: ", err)
+			panic(err)
+		}
+		return fileInfo.Size()
 	}
-	return fileInfo.Size()
 }
